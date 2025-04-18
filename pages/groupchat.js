@@ -5,6 +5,9 @@ import Style from "./groupchat.module.css"
 import { ChatAppContext } from '@/Context/ChatAppContext'
 import images from '../assets'
 import EmojiPicker from 'emoji-picker-react'
+import FileInput from '@/Components/FileInput'
+import FileMessage from '@/Components/FileMessage'
+import UploadProgress from '@/Components/UploadProgress'
 
 const GroupChat = () => {
   const { 
@@ -22,7 +25,13 @@ const GroupChat = () => {
     currentGroupName,
     currentGroupMembers,
     currentGroupMessages,
-    setCurrentGroupId
+    setCurrentGroupId,
+    // File sharing functions
+    sendGroupFileMessage,
+    isFileUploading,
+    uploadProgress,
+    isFileMessage,
+    parseFileData
   } = useContext(ChatAppContext)
 
   // States for UI
@@ -33,7 +42,18 @@ const GroupChat = () => {
   const [localError, setLocalError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
   const emojiPickerRef = useRef(null)
+  const messagesEndRef = useRef(null)
+  
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+  
+  useEffect(() => {
+    scrollToBottom()
+  }, [currentGroupMessages])
   
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -83,6 +103,29 @@ const GroupChat = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
+    // If there's a file selected, send it as a file message
+    if (selectedFile) {
+      try {
+        setLocalError("");
+        console.log("Sending file to group:", currentGroupId);
+        console.log("File:", selectedFile);
+        
+        const result = await sendGroupFileMessage({
+          groupId: currentGroupId,
+          file: selectedFile
+        });
+        
+        if (result && result.success) {
+          setSelectedFile(null);
+        }
+      } catch (error) {
+        console.error("Error sending file:", error);
+        setLocalError("Failed to send file. Please try again.");
+      }
+      return;
+    }
+    
+    // Otherwise send a regular text message
     if (message.trim() === "") {
       setLocalError("Message cannot be empty");
       return;
@@ -110,6 +153,11 @@ const GroupChat = () => {
 
   const toggleEmojiPicker = () => {
     setShowEmojiPicker(prev => !prev);
+  };
+  
+  // Handle file selection
+  const handleFileSelect = (file) => {
+    setSelectedFile(file);
   };
   
   // Handle group selection
@@ -272,48 +320,79 @@ const GroupChat = () => {
                       <p className={Style.loading_message}>Loading messages...</p>
                     </div>
                   ) : currentGroupMessages.length > 0 ? (
-                    currentGroupMessages.map((msg, i) => (
-                      <div 
-                        key={i} 
-                        className={`${Style.message_item} ${msg.sender.toLowerCase() === account.toLowerCase() ? Style.my_message : ""}`}
-                      >
-                        <div className={Style.message_content}>
-                          <span className={Style.sender_name}>{msg.senderName}</span>
-                          <p>{msg.msg}</p>
-                          <span className={Style.message_time}>{formatTime(msg.timestamp)}</span>
+                    currentGroupMessages.map((msg, i) => {
+                      const isFileMsg = isFileMessage(msg.msg);
+                      const isCurrentUser = msg.sender.toLowerCase() === account.toLowerCase();
+                      
+                      return (
+                        <div 
+                          key={i} 
+                          className={`${Style.message_item} ${isCurrentUser ? Style.my_message : ""}`}
+                        >
+                          <div className={Style.message_content}>
+                            <span className={Style.sender_name}>{msg.senderName}</span>
+                            
+                            {isFileMsg ? (
+                              <FileMessage fileData={parseFileData(msg.msg)} />
+                            ) : (
+                              <p>{msg.msg}</p>
+                            )}
+                            
+                            <span className={Style.message_time}>{formatTime(msg.timestamp)}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className={Style.no_messages}>No messages yet. Start the conversation!</p>
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
+                
+                {/* File upload progress indicator */}
+                {isFileUploading && (
+                  <div className={Style.upload_progress_container}>
+                    <p className={Style.uploading_text}>Uploading file...</p>
+                    <UploadProgress progress={uploadProgress} />
+                  </div>
+                )}
                 
                 <form className={Style.message_input_form} onSubmit={handleSendMessage}>
                   <div className={Style.message_input_wrapper}>
-                    <div className={Style.emoji_container} ref={emojiPickerRef}>
-                      <div className={Style.emoji_btn} onClick={toggleEmojiPicker}>
-                        <Image src={images.smile} alt="Emoji" width={30} height={30} />
-                      </div>
-                      {showEmojiPicker && (
-                        <div className={Style.emoji_picker_container}>
-                          <EmojiPicker onEmojiClick={handleEmojiClick} />
+                    <div className={Style.input_actions}>
+                      <div className={Style.emoji_container} ref={emojiPickerRef}>
+                        <div className={Style.emoji_btn} onClick={toggleEmojiPicker} title="Add emoji">
+                          <div className={Style.emojiIconWrapper}>
+                            <Image src={images.smile} alt="Emoji" width={30} height={30} className={Style.emojiIcon} />
+                          </div>
                         </div>
-                      )}
+                        {showEmojiPicker && (
+                          <div className={Style.emoji_picker_container}>
+                            <EmojiPicker onEmojiClick={handleEmojiClick} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <FileInput 
+                        onFileSelect={handleFileSelect} 
+                        disabled={loading || isLoading || isFileUploading}
+                      />
                     </div>
+                    
                     <input 
                       type="text"
-                      placeholder="Type your message here..."
+                      placeholder={selectedFile ? "Press send to upload file" : "Type your message here..."}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      disabled={loading || isLoading}
+                      disabled={loading || isLoading || isFileUploading || selectedFile}
                     />
                   </div>
+                  
                   <button 
                     type="submit" 
-                    disabled={message.trim() === "" || loading || isLoading}
+                    disabled={(message.trim() === "" && !selectedFile) || loading || isLoading || isFileUploading}
                   >
-                    {loading ? "Sending..." : "Send"}
+                    {selectedFile ? "Upload" : loading ? "Sending..." : "Send"}
                   </button>
                 </form>
               </>
@@ -329,4 +408,4 @@ const GroupChat = () => {
   )
 }
 
-export default GroupChat 
+export default GroupChat

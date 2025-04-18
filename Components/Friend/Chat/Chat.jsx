@@ -5,6 +5,11 @@ import { useRouter } from 'next/router'
 import images from "../../../assets"
 import EmojiPicker from 'emoji-picker-react'
 import { Loader } from '@/Components/index1'
+import FileInput from '@/Components/FileInput'
+import FileMessage from '@/Components/FileMessage'
+import UploadProgress from '@/Components/UploadProgress'
+import { useContext } from 'react'
+import { ChatAppContext } from '@/Context/ChatAppContext'
 
 const Chat = ({
   functionName,
@@ -17,15 +22,23 @@ const Chat = ({
   currentUserAddress,
   readUser,
 }) => {
+  const { isFileMessage, parseFileData, isFileUploading, uploadProgress, sendFileMessage } = useContext(ChatAppContext);
   const [message, setMessage] = useState('');
   const [chatData, setChatData] = useState({
     name: "",
     address: "",
   });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const emojiPickerRef = useRef(null);
+  const messagesEndRef = useRef(null);
   
   const router = useRouter();
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [friendMsg]);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -78,7 +91,13 @@ const Chat = ({
   };
 
   const handleSendMessage = () => {
-    // Check if we have a message and a recipient address
+    // If there's a file selected, send it as a file message
+    if (selectedFile) {
+      handleSendFile();
+      return;
+    }
+    
+    // Otherwise send a regular text message
     if (message.trim() === "") {
       console.log("Message is empty");
       return;
@@ -101,11 +120,36 @@ const Chat = ({
     // Clear the message field
     setMessage("");
   };
+  
+  const handleSendFile = async () => {
+    if (!selectedFile || !chatData.address) {
+      console.log("No file selected or no recipient address");
+      return;
+    }
+    
+    try {
+      console.log("Sending file:", selectedFile.name);
+      console.log("To address:", chatData.address);
+      
+      const result = await sendFileMessage({
+        file: selectedFile,
+        address: chatData.address
+      });
+      
+      if (result && result.success) {
+        setSelectedFile(null);
+      }
+    } catch (error) {
+      console.error("Error sending file:", error);
+    }
+  };
+  
+  const handleFileSelect = (file) => {
+    setSelectedFile(file);
+  };
 
   const handleEmojiClick = (emojiObject) => {
     setMessage(prevMsg => prevMsg + emojiObject.emoji);
-    // Optional: close the picker after selecting, or leave it open
-    // setShowEmojiPicker(false);
   };
 
   const toggleEmojiPicker = () => {
@@ -139,6 +183,8 @@ const Chat = ({
           {friendMsg.length > 0 ? (
             friendMsg.map((el, i) => {
               const isMyMessage = isSender(el.sender);
+              const isFileMsgData = isFileMessage(el.msg);
+              
               return (
                 <div 
                   key={i} 
@@ -148,7 +194,13 @@ const Chat = ({
                     <span className={Style.sender_name}>
                       {isMyMessage ? userName : chatData.name}
                     </span>
-                    {el.msg && <p>{el.msg}</p>}
+                    
+                    {isFileMsgData ? (
+                      <FileMessage fileData={parseFileData(el.msg)} />
+                    ) : (
+                      <p>{el.msg}</p>
+                    )}
+                    
                     <span className={Style.message_time}>
                       {formatDate(el.timestamp)}
                     </span>
@@ -161,44 +213,58 @@ const Chat = ({
               <p>No messages yet. Start a conversation!</p>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
+      
+      {/* File upload progress indicator */}
+      {isFileUploading && (
+        <div className={Style.upload_progress_container}>
+          <p className={Style.uploading_text}>Uploading file...</p>
+          <UploadProgress progress={uploadProgress} />
+        </div>
+      )}
 
       <div className={Style.Chat_box_send}>
         <div className={Style.Chat_box_send_img}>
-          <div className={Style.emoji_container} ref={emojiPickerRef}>
-            <div className={Style.emoji_btn} onClick={toggleEmojiPicker}>
-              <Image 
-                src={images.smile}
-                alt='smile'
-                width={40}
-                height={40}
-                className={Style.Smiley_img}
-              />
-            </div>
-            {showEmojiPicker && (
-              <div className={Style.emoji_picker_container}>
-                <EmojiPicker onEmojiClick={handleEmojiClick} />
+          <div className={Style.input_actions}>
+            <div className={Style.emoji_container} ref={emojiPickerRef}>
+              <div className={Style.emoji_btn} onClick={toggleEmojiPicker} title="Add emoji">
+                <div className={Style.emojiIconWrapper}>
+                  <Image 
+                    src={images.smile}
+                    alt='smile'
+                    width={30}
+                    height={30}
+                    className={Style.emojiIcon}
+                  />
+                </div>
               </div>
-            )}
+              {showEmojiPicker && (
+                <div className={Style.emoji_picker_container}>
+                  <EmojiPicker onEmojiClick={handleEmojiClick} />
+                </div>
+              )}
+            </div>
+            
+            <FileInput 
+              onFileSelect={handleFileSelect}
+              disabled={loading || isFileUploading}
+            />
           </div>
+          
           <input 
             type='text'
-            placeholder='Type your message..'
+            placeholder={selectedFile ? 'Press send to upload file' : 'Type your message..'}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={(e) => {
               if (e.key === 'Enter') handleSendMessage();
             }}
+            disabled={loading || isFileUploading || selectedFile}
           />
-          <Image 
-            src={images.file}
-            alt='file'
-            width={40}
-            height={40} 
-            className={Style.File_img}
-          />
-          {loading ? (
+          
+          {loading || isFileUploading ? (
             <Loader />
           ) : (
             <Image 

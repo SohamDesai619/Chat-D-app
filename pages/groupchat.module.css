@@ -477,4 +477,56 @@
   .groupchat_box_chat {
     height: calc(75vh - 300px - 4rem);
   }
+}
+
+/* File sharing related styles */
+.input_actions {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.upload_progress_container {
+  padding: 0.5rem 1rem;
+  background-color: rgba(108, 92, 231, 0.1);
+  border-radius: 0.5rem;
+  margin: 0.5rem 1rem;
+}
+
+.uploading_text {
+  font-size: 0.8rem;
+  color: #6c5ce7;
+  margin-bottom: 0.25rem;
+}
+
+/* Make sure the emoji container is properly positioned */
+.emoji_container {
+  position: relative;
+  margin-right: 0.5rem;
+}
+
+.emoji_btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emojiIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f182035b;
+  transition: all 0.3s ease;
+}
+
+.emojiIconWrapper:hover {
+  background-color: #f18203;
+}
+
+.emojiIcon {
+  filter: brightness(1.2);
 } 
