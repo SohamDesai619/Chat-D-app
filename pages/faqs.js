@@ -52,7 +52,7 @@ const FAQs = () => {
     },
     {
       question: "How do I report inappropriate content or users?",
-      answer: "If you encounter inappropriate content or behavior, please contact our support team through the Contact page. Provide as much detail as possible about the issue, including user information and message timestamps if available."
+      answer: "If you encounter inappropriate content or behavior, please contact our support team through the Contact page or email us at chatxcontactus@gmail.com. Provide as much detail as possible about the issue, including user information and message timestamps if available."
     }
   ]
 

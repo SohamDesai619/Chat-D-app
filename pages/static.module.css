@@ -156,6 +156,36 @@
   background-color: #ff9a33;
 }
 
+.required {
+  color: #f18203;
+  margin-left: 3px;
+}
+
+.statusMessage {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.success {
+  background-color: rgba(46, 213, 115, 0.2);
+  border-left: 4px solid #2ed573;
+  color: #7bed9f;
+}
+
+.error {
+  background-color: rgba(255, 71, 87, 0.2);
+  border-left: 4px solid #ff4757;
+  color: #ff6b81;
+}
+
+.submitBtn:disabled {
+  background-color: #57575f;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* Settings Page Styles */
 .settingsContainer {
   display: flex;

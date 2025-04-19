@@ -105,7 +105,7 @@ const Terms = () => {
             If you have any questions about these Terms, please contact us at:
           </p>
           <p className={Style.contactInfo}>
-            support@chatdapp.io
+            chatxcontactus@gmail.com
           </p>
         </div>
       </div>

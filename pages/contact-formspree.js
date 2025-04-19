@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Style from './static.module.css'
 import images from '../assets'
 
-const Contact = () => {
+const ContactFormspree = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -17,7 +17,6 @@ const Contact = () => {
     message: ''
   });
   const [loading, setLoading] = useState(false);
-  const formRef = useRef();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,17 +54,21 @@ const Contact = () => {
     }
 
     try {
-      // Send form data to our API route
-      const response = await fetch('/api/contact', {
+      // Send to Formspree - replace 'your-formspree-id' with your actual form ID
+      const response = await fetch('https://formspree.io/f/your-formspree-id', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject || 'Contact Form Submission',
+          message: formData.message,
+          _subject: `New contact form submission from ${formData.name}`
+        }),
       });
 
-      const data = await response.json();
-      
       if (response.ok) {
         setStatus({
           submitted: true,
@@ -81,7 +84,7 @@ const Contact = () => {
           message: ''
         });
       } else {
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error('Form submission failed');
       }
     } catch (error) {
       console.error('Contact form error:', error);
@@ -112,7 +115,7 @@ const Contact = () => {
             </div>
           )}
           
-          <form ref={formRef} onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
             <div className={Style.formGroup}>
               <label>Name <span className={Style.required}>*</span></label>
               <input 
@@ -192,8 +195,6 @@ const Contact = () => {
               <p>123 Blockchain Street, Crypto Valley, Web3 City</p>
             </div>
           </div>
-          
-          {/* The "Follow us" section has been removed as requested */}
         </div>
       </div>
       
@@ -206,4 +207,4 @@ const Contact = () => {
   )
 }
 
-export default Contact 
+export default ContactFormspree 
