@@ -44,6 +44,7 @@ const Chat = ({
   const [isTyping, setIsTyping] = useState(false);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const [prevMsgLength, setPrevMsgLength] = useState(0);
+  const [replyingTo, setReplyingTo] = useState(null);
   
   const emojiPickerRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -208,14 +209,26 @@ const Chat = ({
     // Set scroll to bottom for when our own message appears
     setShouldScrollToBottom(true);
     
-    // Call the function passed from parent component
-    functionName({
+    // Prepare message data with reply information if replying to a message
+    const messageData = {
       msg: message,
       address: chatData.address
-    });
+    };
     
-    // Clear the message field and typing indicator
+    // Add reply info if replying to a message
+    if (replyingTo) {
+      // Format: "REPLY:{originalSender}:{originalMsgId}:{originalMsgPreview}:{actualMessage}"
+      // This keeps the contract unchanged but adds reply context in the message itself
+      const replyPrefix = `REPLY:${replyingTo.sender}:${replyingTo.id}:${replyingTo.msg.substring(0, 30)}:`;
+      messageData.msg = replyPrefix + message;
+    }
+    
+    // Call the function passed from parent component
+    functionName(messageData);
+    
+    // Clear the message field, typing indicator, and reply state
     setMessage("");
+    setReplyingTo(null);
     setIsTyping(false);
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -266,6 +279,48 @@ const Chat = ({
     return address.toLowerCase() === account.toLowerCase();
   };
 
+  // New function to handle selecting a message to reply to
+  const handleSelectReply = (message) => {
+    setReplyingTo(message);
+    // Focus on input after selecting a message to reply to
+    document.querySelector(`.${Style.Chat_box_send_img} input`).focus();
+  };
+  
+  // New function to cancel the current reply
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+  
+  // New function to check if a message is a reply and extract reply data
+  const extractReplyData = (messageText) => {
+    if (!messageText.startsWith('REPLY:')) return null;
+    
+    try {
+      // Extract reply data from message format: "REPLY:{originalSender}:{originalMsgId}:{originalMsgPreview}:{actualMessage}"
+      const parts = messageText.split(':');
+      const originalSender = parts[1];
+      const originalMsgId = parts[2];
+      const originalMsgPreview = parts[3];
+      const actualMessage = parts.slice(4).join(':'); // Join the rest with colons in case the message had colons
+      
+      return {
+        originalSender,
+        originalMsgId,
+        originalMsgPreview,
+        actualMessage
+      };
+    } catch (error) {
+      console.error("Error parsing reply data:", error);
+      return null;
+    }
+  };
+  
+  // Function to get actual message text (removes reply prefix if it exists)
+  const getMessageText = (messageText) => {
+    const replyData = extractReplyData(messageText);
+    return replyData ? replyData.actualMessage : messageText;
+  };
+
   return (
     <div className={Style.Chat}>
       {currentUserName && currentUserAddress ? (
@@ -302,6 +357,7 @@ const Chat = ({
             friendMsg.map((el, i) => {
               const isMyMessage = isSender(el.sender);
               const isFileMsgData = isFileMessage(el.msg);
+              const replyData = !isFileMsgData ? extractReplyData(el.msg) : null;
               
               return (
                 <div 
@@ -313,15 +369,42 @@ const Chat = ({
                       {isMyMessage ? userName : chatData.name}
                     </span>
                     
+                    {replyData && (
+                      <div className={Style.reply_preview} onClick={() => {
+                        // Could add scroll to original message functionality here
+                      }}>
+                        <div className={Style.reply_line}></div>
+                        <div className={Style.reply_content}>
+                          <span className={Style.reply_sender}>
+                            {isSender(replyData.originalSender) ? 'You' : chatData.name}
+                          </span>
+                          <p className={Style.reply_text}>{replyData.originalMsgPreview}</p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {isFileMsgData ? (
                       <FileMessage fileData={parseFileData(el.msg)} />
                     ) : (
-                      <p>{el.msg}</p>
+                      <p>{getMessageText(el.msg)}</p>
                     )}
                     
-                    <span className={Style.message_time}>
-                      {formatDate(el.timestamp)}
-                    </span>
+                    <div className={Style.message_footer}>
+                      <span className={Style.message_time}>
+                        {formatDate(el.timestamp)}
+                      </span>
+                      
+                      <span 
+                        className={Style.reply_button}
+                        onClick={() => handleSelectReply(el)}
+                        title="Reply to this message"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M9 8L5 12L9 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M5 12H16C18.2091 12 20 10.2091 20 8V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -344,6 +427,35 @@ const Chat = ({
       )}
 
       <div className={Style.Chat_box_send}>
+        {/* Display reply preview when replying to a message */}
+        {replyingTo && (
+          <div className={Style.reply_container}>
+            <div className={Style.reply_preview_input}>
+              <div className={Style.reply_line_input}></div>
+              <div className={Style.reply_content_input}>
+                <span className={Style.reply_sender_input}>
+                  Replying to {isSender(replyingTo.sender) ? 'yourself' : chatData.name}
+                </span>
+                <p className={Style.reply_text_input}>
+                  {isFileMessage(replyingTo.msg) 
+                    ? 'File message' 
+                    : replyingTo.msg.substring(0, 50) + (replyingTo.msg.length > 50 ? '...' : '')}
+                </p>
+              </div>
+            </div>
+            <button 
+              className={Style.cancel_reply_button} 
+              onClick={cancelReply}
+              title="Cancel reply"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        
         <div className={Style.Chat_box_send_img}>
           <div className={Style.input_actions}>
             <div className={Style.emoji_container} ref={emojiPickerRef}>
