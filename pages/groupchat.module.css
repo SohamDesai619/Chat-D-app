@@ -351,9 +351,7 @@
 .message_time {
   font-size: 0.7rem;
   color: #96969f;
-  display: block;
-  text-align: right;
-  margin-top: 0.25rem;
+  margin-left: auto;
 }
 
 .my_message .message_time {
@@ -529,4 +527,142 @@
 
 .emojiIcon {
   filter: brightness(1.2);
+}
+
+/* Reply functionality styles */
+.message_footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.reply_button {
+  opacity: 0;
+  cursor: pointer;
+  color: #96969f;
+  transition: all 0.2s ease;
+}
+
+.message_content:hover .reply_button {
+  opacity: 1;
+}
+
+.my_message .reply_button {
+  color: #ffe0c0;
+}
+
+.reply_button:hover {
+  color: #f18203;
+  transform: scale(1.1);
+}
+
+.reply_preview {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+  display: flex;
+  cursor: pointer;
+}
+
+.my_message .reply_preview {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.reply_line {
+  width: 2px;
+  background-color: #f18203;
+  margin-right: 0.5rem;
+  border-radius: 1px;
+}
+
+.reply_content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reply_sender {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #f18203;
+  margin-bottom: 0.2rem;
+  display: block;
+}
+
+.reply_text {
+  font-size: 0.75rem;
+  color: #96969f;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my_message .reply_text {
+  color: #ffe0c0;
+}
+
+.reply_container {
+  display: flex;
+  align-items: center;
+  background-color: rgba(241, 130, 3, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  margin-bottom: 0.5rem;
+}
+
+.reply_preview_input {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.reply_line_input {
+  width: 2px;
+  background-color: #f18203;
+  margin-right: 0.5rem;
+  border-radius: 1px;
+}
+
+.reply_content_input {
+  flex: 1;
+  min-width: 0;
+}
+
+.reply_sender_input {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #f18203;
+  margin-bottom: 0.2rem;
+  display: block;
+}
+
+.reply_text_input {
+  font-size: 0.75rem;
+  color: #96969f;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cancel_reply_button {
+  background: none;
+  border: none;
+  color: #96969f;
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-left: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.cancel_reply_button:hover {
+  color: #f18203;
+  background-color: rgba(255, 255, 255, 0.1);
 } 
