@@ -10,6 +10,8 @@ import FileMessage from '@/Components/FileMessage'
 import UploadProgress from '@/Components/UploadProgress'
 import { useContext } from 'react'
 import { ChatAppContext } from '@/Context/ChatAppContext'
+import OnlineStatus from '@/Components/OnlineStatus/OnlineStatus'
+import socketService from '@/Utils/socketService'
 
 const Chat = ({
   functionName,
@@ -22,7 +24,16 @@ const Chat = ({
   currentUserAddress,
   readUser,
 }) => {
-  const { isFileMessage, parseFileData, isFileUploading, uploadProgress, sendFileMessage } = useContext(ChatAppContext);
+  const { 
+    isFileMessage, 
+    parseFileData, 
+    isFileUploading, 
+    uploadProgress, 
+    sendFileMessage,
+    onlineUsers,
+    typingUsers 
+  } = useContext(ChatAppContext);
+  
   const [message, setMessage] = useState('');
   const [chatData, setChatData] = useState({
     name: "",
@@ -30,15 +41,62 @@ const Chat = ({
   });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+  const [prevMsgLength, setPrevMsgLength] = useState(0);
+  
   const emojiPickerRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatBoxRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   
   const router = useRouter();
 
-  // Scroll to bottom when messages change
+  // Improved scroll behavior to maintain position when viewing old messages
   useEffect(() => {
+    // If no previous messages existed (first load), always scroll to bottom
+    if (prevMsgLength === 0 && friendMsg.length > 0) {
+      scrollToBottom();
+      setPrevMsgLength(friendMsg.length);
+      return;
+    }
+    
+    // If new messages were added, check if we should auto-scroll
+    if (friendMsg.length > prevMsgLength) {
+      if (shouldScrollToBottom) {
+        scrollToBottom();
+      }
+      setPrevMsgLength(friendMsg.length);
+    }
+  }, [friendMsg, shouldScrollToBottom, prevMsgLength]);
+  
+  // Function to manually scroll to bottom
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [friendMsg]);
+  };
+  
+  // Track scroll position to determine if user is at bottom
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!chatBoxRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = chatBoxRef.current;
+      const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
+      
+      setShouldScrollToBottom(isAtBottom);
+    };
+    
+    const chatBox = chatBoxRef.current;
+    if (chatBox) {
+      chatBox.addEventListener('scroll', handleScroll);
+    }
+    
+    return () => {
+      if (chatBox) {
+        chatBox.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -74,6 +132,42 @@ const Chat = ({
       readUser(address);
     }
   }, [router.isReady, router.query, readMessage, readUser]);
+  
+  // Handle typing indicator
+  const handleTyping = (e) => {
+    setMessage(e.target.value);
+    
+    // If recipient address is available, send typing indicator
+    if (chatData.address) {
+      // Clear previous timeout if it exists
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Send typing indicator if it's not already sent
+      if (!isTyping) {
+        setIsTyping(true);
+        socketService.sendTypingIndicator(account, chatData.address, true);
+      }
+      
+      // Set a timeout to clear typing indicator after 3 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        socketService.sendTypingIndicator(account, chatData.address, false);
+      }, 3000);
+    }
+  };
+  
+  // Check if the recipient is currently typing
+  const isRecipientTyping = () => {
+    return typingUsers && typingUsers[chatData.address] === true;
+  };
+  
+  // Get recipient's online status
+  const getRecipientOnlineStatus = () => {
+    if (!chatData.address || !onlineUsers) return { isOnline: false };
+    return onlineUsers[chatData.address] || { isOnline: false };
+  };
 
   // Format date correctly
   const formatDate = (timestamp) => {
@@ -111,14 +205,22 @@ const Chat = ({
     console.log("Sending message:", message);
     console.log("To address:", chatData.address);
     
+    // Set scroll to bottom for when our own message appears
+    setShouldScrollToBottom(true);
+    
     // Call the function passed from parent component
     functionName({
       msg: message,
       address: chatData.address
     });
     
-    // Clear the message field
+    // Clear the message field and typing indicator
     setMessage("");
+    setIsTyping(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    socketService.sendTypingIndicator(account, chatData.address, false);
   };
   
   const handleSendFile = async () => {
@@ -130,6 +232,9 @@ const Chat = ({
     try {
       console.log("Sending file:", selectedFile.name);
       console.log("To address:", chatData.address);
+      
+      // Set scroll to bottom for when our file message appears
+      setShouldScrollToBottom(true);
       
       const result = await sendFileMessage({
         file: selectedFile,
@@ -172,13 +277,26 @@ const Chat = ({
             height={30} 
           />
           <div className={Style.Chat_user_info_box}>
-            <h4>{chatData.name || currentUserName}</h4>
+            <h4>
+              {chatData.name || currentUserName}
+              <span className={Style.online_status_wrapper}>
+                <OnlineStatus 
+                  isOnline={getRecipientOnlineStatus().isOnline} 
+                  lastSeen={getRecipientOnlineStatus().lastSeen}
+                  size="sm"
+                />
+              </span>
+            </h4>
             <p className={Style.show}>{chatData.address || currentUserAddress}</p>
+            
+            {isRecipientTyping() && (
+              <p className={Style.typing_indicator}>typing...</p>
+            )}
           </div>
         </div>
       ) : null}
 
-      <div className={Style.Chat_box}>
+      <div className={Style.Chat_box} ref={chatBoxRef}>
         <div className={Style.Chat_box_left}>
           {friendMsg.length > 0 ? (
             friendMsg.map((el, i) => {
@@ -257,7 +375,7 @@ const Chat = ({
             type='text'
             placeholder={selectedFile ? 'Press send to upload file' : 'Type your message..'}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleTyping}
             onKeyPress={(e) => {
               if (e.key === 'Enter') handleSendMessage();
             }}
@@ -278,6 +396,23 @@ const Chat = ({
           )}
         </div>
       </div>
+      
+      {/* Scroll to bottom button - only show when not at bottom */}
+      {!shouldScrollToBottom && friendMsg.length > 0 && (
+        <button 
+          className={Style.scroll_to_bottom_btn}
+          onClick={() => {
+            setShouldScrollToBottom(true);
+            scrollToBottom();
+          }}
+          title="Scroll to latest messages"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 13L12 18L17 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 6L12 11L17 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

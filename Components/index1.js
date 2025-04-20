@@ -7,8 +7,9 @@ import Friend from "./Friend/Friend";
 import FileInput from './FileInput';
 import FileMessage from './FileMessage';
 import UploadProgress from './UploadProgress';
+import OnlineStatus from './OnlineStatus/OnlineStatus';
 
 // Fix import conflict with Next.js built-in Error component
 import ErrorComponent from "./Error/Error"; 
 
-export { NavBar, Filter, ErrorComponent as Error, Loader, Model, UserCard, Friend, FileInput, FileMessage, UploadProgress };
+export { NavBar, Filter, ErrorComponent as Error, Loader, Model, UserCard, Friend, FileInput, FileMessage, UploadProgress, OnlineStatus };

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 //internal import
 import { CheckIfWalletConnected,connectWallet,connectingWithContract } from '@/Utils/apiFeature';
 import { uploadFileToIPFS, getFileMetadata, formatFileSize, getFileIcon } from '@/Utils/pinataService';
+import socketService from '@/Utils/socketService';
 
 export const ChatAppContext=React.createContext();
 
@@ -30,6 +31,12 @@ export const ChatAppProvider=({children})=>{
     // File sharing states
     const[isFileUploading, setIsFileUploading] = useState(false);
     const[uploadProgress, setUploadProgress] = useState(0);
+    
+    // WebSocket and online status related states
+    const[onlineUsers, setOnlineUsers] = useState({});
+    const[isSocketConnected, setIsSocketConnected] = useState(false);
+    const[typingUsers, setTypingUsers] = useState({});
+    const[unreadMessages, setUnreadMessages] = useState({});
 
     const router=useRouter();
 
@@ -495,7 +502,16 @@ export const ChatAppProvider=({children})=>{
             isFileMessage,
             parseFileData,
             formatFileSize,
-            getFileIcon
+            getFileIcon,
+            // WebSocket and online status related
+            onlineUsers,
+            setOnlineUsers,
+            isSocketConnected,
+            setIsSocketConnected,
+            typingUsers,
+            setTypingUsers,
+            unreadMessages,
+            setUnreadMessages
         }}>
             {children}
         </ChatAppContext.Provider>

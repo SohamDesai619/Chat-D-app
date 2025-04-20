@@ -30,6 +30,7 @@ import image8 from "./img8.gif";
 import image9 from "./img9.gif";
 import image10 from "./img10.gif";
 
+
 export default {
   logo,
   close,
