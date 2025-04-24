@@ -1,0 +1,7 @@
+{
+    "buildCommand": "cd Chat-D-app && npm install --legacy-peer-deps && npm run build",
+    "outputDirectory": "Chat-D-app/.next",
+    "devCommand": "cd Chat-D-app && npm run dev",
+    "installCommand": "cd Chat-D-app && npm install --legacy-peer-deps",
+    "framework": "nextjs"
+  }
